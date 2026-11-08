@@ -1,0 +1,4 @@
+# captures can contain private traffic: never commit them
+*.pcap
+*.pcapng
+__pycache__/

@@ -1,0 +1,38 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.9", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m unittest -v
+
+  compare-with-tcpdump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Capture known traffic on loopback
+        run: |
+          sudo apt-get install -y -qq tcpdump
+          sudo tcpdump -i lo -w lo.pcap -U & sleep 2
+          ping -c 5 -i 0.2 127.0.0.1 > /dev/null
+          python3 -c "import socket; s=socket.socket(socket.AF_INET, socket.SOCK_DGRAM); [s.sendto(b'x', ('127.0.0.1', p)) for p in (53, 53, 67)]"
+          sleep 2; sudo pkill tcpdump; sleep 1
+          sudo chmod a+r lo.pcap
+      - name: pcapsum counts must equal tcpdump's
+        run: |
+          python3 pcapsum.py lo.pcap
+          python3 pcapsum.py lo.pcap --json > s.json
+          check() { want=$(tcpdump -r lo.pcap $2 2>/dev/null | wc -l); got=$(python3 -c "import json; print($1)"); echo "$2: tcpdump=$want pcapsum=$got"; [ "$want" = "$got" ]; }
+          check "json.load(open('s.json'))['packets']" ""
+          check "json.load(open('s.json'))['protocols'].get('ICMP', 0)" "icmp"
+          check "json.load(open('s.json'))['protocols'].get('UDP', 0)" "udp"
+          check "json.load(open('s.json'))['dns_packets']" "port 53"
