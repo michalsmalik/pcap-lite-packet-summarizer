@@ -69,3 +69,7 @@ The 16 ICMP packets are 10 from the pings plus 6 *port unreachable* replies, bec
 ## License
 
 [MIT](LICENSE)
+
+## AI usage
+
+This project was created with the help of AI. The code, tests and documentation were written with [Claude Code](https://claude.com/claude-code) (Anthropic), then reviewed, run and verified by me.
